@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Sandspiel Sandbox</title>
+    <style>
+        body { background-color: #222; color: white; font-family: sans-serif; text-align: center; margin: 0; padding: 20px; }
+        canvas { border: 2px solid #555; background: #000; cursor: crosshair; display: block; margin: 20px auto; }
+        .controls { margin-top: 10px; }
+        button { background: #444; color: white; border: none; padding: 10px 20px; margin: 0 5px; cursor: pointer; font-size: 16px; border-radius: 4px; }
+        button.active { background: #e67e22; font-weight: bold; }
+        button:hover { background: #555; }
+    </style>
+</head>
+<body>
+
+    <h1>My Sandspiel Clone</h1>
+    <p>Click and drag on the canvas to drop elements!</p>
+
+    <canvas id="sandCanvas" width="400" height="400"></canvas>
+
+    <div class="controls">
+        <button id="btn-sand" class="active" onclick="setElement(1)">Sand (Yellow)</button>
+        <button id="btn-wall" onclick="setElement(2)">Wall (Gray)</button>
+        <button id="btn-eraser" onclick="setElement(0)">Eraser</button>
+        <button onclick="clearGrid()">Clear All</button>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('sandCanvas');
+        const ctx = canvas.getContext('2d');
+        const width = 100;
+        const height = 100;
+        const cellSize = 4;
+        
+        let grid = Array(width).fill().map(() => Array(height).fill(0));
+        let currentElement = 1; // 1 = Sand, 2 = Wall, 0 = Empty
+        let isDrawing = false;
+
+        // Colors Mapping
+        const colors = { 0: '#000000', 1: '#e6bc5c', 2: '#888888' };
+
+        function setElement(type) {
+            currentElement = type;
+            document.getElementById('btn-sand').classList.toggle('active', type === 1);
+            document.getElementById('btn-wall').classList.toggle('active', type === 2);
+            document.getElementById('btn-eraser').classList.toggle('active', type === 0);
+        }
+
+        function clearGrid() {
+            grid = Array(width).fill().map(() => Array(height).fill(0));
+        }
+
+        // Draw Loop
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            for (let x = 0; x < width; x++) {
+                for (let y = 0; y < height; y++) {
+                    if (grid[x][y] !== 0) {
+                        ctx.fillStyle = colors[grid[x][y]];
+                        ctx.fillRect(x * cellSize, y * cellSize, cellSize, cellSize);
+                    }
+                }
+            }
+        }
+
+        // Sandbox Physics Logic
+        function updatePhysics() {
+            let nextGrid = grid.map(row => [...row]);
+
+            for (let y = height - 1; y >= 0; y--) {
+                for (let x = 0; x < width; x++) {
+                    if (grid[x][y] === 1) { // If it's sand
+                        let below = y + 1;
+                        let dir = Math.random() < 0.5 ? 1 : -1; // Randomly slide left or right
+
+                        if (below < height && grid[x][below] === 0) {
+                            nextGrid[x][below] = 1;
+                            nextGrid[x][y] = 0;
+                        } else if (below < height && x + dir >= 0 && x + dir < width && grid[x + dir][below] === 0) {
+                            nextGrid[x + dir][below] = 1;
+                            nextGrid[x][y] = 0;
+                        }
+                    }
+                }
+            }
+            grid = nextGrid;
+        }
+
+        // Input Handlers
+        function addElement(e) {
+            const rect = canvas.getBoundingClientRect();
+            const mouseX = Math.floor((e.clientX - rect.left) / cellSize);
+            const mouseY = Math.floor((e.clientY - rect.top) / cellSize);
+            
+            if (mouseX >= 0 && mouseX < width && mouseY >= 0 && mouseY < height) {
+                grid[mouseX][mouseY] = currentElement;
+                // Add a little extra thickness for easy painting
+                if (mouseX + 1 < width) grid[mouseX + 1][mouseY] = currentElement;
+                if (mouseY + 1 < height) grid[mouseX][mouseY + 1] = currentElement;
+            }
+        }
+
+        canvas.addEventListener('mousedown', (e) => { isDrawing = true; addElement(e); });
+        window.addEventListener('mouseup', () => isDrawing = false);
+        canvas.addEventListener('mousemove', (e) => { if (isDrawing) addElement(e); });
+
+        // Game loop ticker
+        setInterval(() => {
+            updatePhysics();
+            draw();
+        }, 25);
+    </script>
+</body>
+</html>
